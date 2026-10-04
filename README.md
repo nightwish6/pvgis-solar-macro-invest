@@ -1,4 +1,4 @@
-![Solar Analytics Dashboard](https://github.com/nightwish6/pvgis-solar-macro-invest/blob/main/European_Solar_Asset_Analytics.pdf)
+![Solar Analytics Dashboard](./European_Solar_Asset_Analytics.pdf)
 
 ### Summary
 European Solar Asset Analytics (1986–2015)
