@@ -1,3 +1,7 @@
+### Summary
+European Solar Asset Analytics (1986–2015)
+Data-driven dashboard for evaluating the long-term performance and risk profile of solar assets across Europe. Visualizes climate trends, seasonal yield gaps, interannual volatility, and downside risks using metrics such as Capacity Factor, Winter Gap, and Coefficient of Variation. Enables informed investment decisions by quantifying both expected yields and extreme scenarios.
+
 ### Backend
 - **Runtime:** Node.js
 - **Framework:** Express.js (v4.22.3)
@@ -27,5 +31,3 @@
 - **Data flow:** Browser → Express API → ClickHouse → aggregated views → JSON response → D3.js rendering
 - **Deployment:** No build step required. Runs on any VPS with Node.js and ClickHouse, or locally
 
-### Summary
-A lightweight fullstack analytics dashboard: Express + ClickHouse on the backend, D3.js on the frontend. No bundlers, no transpilers, no framework overhead — just vanilla JS querying pre-aggregated ClickHouse views and rendering interactive charts.
