@@ -1,4 +1,4 @@
-![Solar Analytics Dashboard](./European_Solar_Asset_Analytics.pdf)
+![Solar Analytics Dashboard](./European_Solar_Asset_Analytics.png)
 
 ### Summary
 European Solar Asset Analytics (1986–2015)
