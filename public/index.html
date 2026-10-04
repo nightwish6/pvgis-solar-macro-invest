@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>European Solar Asset Analytics (1986-2015)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-hexbin/0.2.2/d3-hexbin.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { background-color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; overflow: hidden; }
+        .dashboard-container { padding: 10px 16px 10px 16px; max-width: 100%; display: flex; flex-direction: column; height: 100vh; gap: 8px; }
+        .chart-header { background: #fff; padding: 8px 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .chart-header h2 { font-size: 18px; margin: 0; }
+        .chart-header h5 { font-size: 13px; margin: 2px 0; }
+        .chart-header p { font-size: 11px; margin: 0; }
+        .filter-legend { flex-shrink: 0; }
+        .charts-row { display: flex; flex: 1; min-height: 0; position: relative; gap: 12px; background-color: #f5f5f5; padding: 4px; }
+        .chart-col { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+        .chart-col:first-child { width: 50%; height: 100%; margin-right: 0; }
+        .chart-col:last-child { width: 50%; height: 100%; display: flex; flex-direction: column; }
+        .chart-panel { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 0; display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
+        .chart-panel svg { background-color: #ffffff; }
+        #chart-header { flex-shrink: 0; }
+        .chart-panel > svg { display: block; }
+        .right-panel { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 10px; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 14px; }
+        .hexagon { stroke: #333; stroke-width: 0.5; cursor: pointer; }
+        .hexbin-label { font-family: 'Segoe UI', sans-serif; font-size: 11px; font-weight: 600; fill: #333; pointer-events: none; text-anchor: middle; user-select: none; }
+        svg { font-family: 'Segoe UI', sans-serif; }
+        .axis-label { font-size: 12px; fill: #555; font-weight: 500; }
+        .tooltip { position: absolute; background-color: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-size: 13px; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+        .tooltip #chart1-regions-list { pointer-events: auto; }
+        .tooltip h6 { margin: 0 0 5px 0; color: #2c3e50; }
+        .tooltip p { margin: 2px 0; font-size: 12px; }
+        .region-tag { display: inline-block; padding: 2px 8px; background: #e3f2fd; border-radius: 12px; font-size: 11px; font-weight: 600; color: #1565c0; }
+        #chart2-scroll::-webkit-scrollbar { height: 8px; }
+        #chart2-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        #chart2-scroll::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        #chart2-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
+        #chart1-regions-list::-webkit-scrollbar { width: 6px; }
+        #chart1-regions-list::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+        #chart1-regions-list::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+        #chart1-regions-list::-webkit-scrollbar-thumb:hover { background: #555; }
+        #chart3-fullscreen-btn:hover { background: #fff !important; }
+        #chart3-fullscreen-btn:active { background: #f5f5f5 !important; }
+    </style>
+</head>
+    <body>
+    <div class="dashboard-container">
+        <div class="chart-header" style="text-align: left;">
+            <h2 style="font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <!-- EU Flag -->
+                <svg width="28" height="20" viewBox="0 0 280 200" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="280" height="200" fill="#003399"/>
+                    <g fill="#FFCC00">
+                        <!-- 12 stars in a circle -->
+                        <polygon points="140,20 144.5,34.5 159.5,34.5 147.8,43 152.2,57.5 140,49 127.8,57.5 132.2,43 120.5,34.5 135.5,34.5"/>
+                        <polygon points="172.4,30 176.9,44.5 191.9,44.5 180.2,53 184.6,67.5 172.4,59 160.2,67.5 164.6,53 152.9,44.5 167.9,44.5" transform="rotate(30 140 100)"/>
+                        <polygon points="200,56 204.5,70.5 219.5,70.5 207.8,79 212.2,93.5 200,85 187.8,93.5 192.2,79 180.5,70.5 195.5,70.5" transform="rotate(60 140 100)"/>
+                        <polygon points="220,90 224.5,104.5 239.5,104.5 227.8,113 232.2,127.5 220,119 207.8,127.5 212.2,113 200.5,104.5 215.5,104.5" transform="rotate(90 140 100)"/>
+                        <polygon points="230,120 234.5,134.5 249.5,134.5 237.8,143 242.2,157.5 230,149 217.8,157.5 222.2,143 210.5,134.5 225.5,134.5" transform="rotate(120 140 100)"/>
+                        <polygon points="228,150 232.5,164.5 247.5,164.5 235.8,173 240.2,187.5 228,179 215.8,187.5 220.2,173 208.5,164.5 223.5,164.5" transform="rotate(150 140 100)"/>
+                        <polygon points="210,172 214.5,186.5 229.5,186.5 217.8,195 222.2,209.5 210,201 197.8,209.5 202.2,195 190.5,186.5 205.5,186.5" transform="rotate(180 140 100)"/>
+                        <polygon points="180,184 184.5,198.5 199.5,198.5 187.8,207 192.2,221.5 180,213 167.8,221.5 172.2,207 160.5,198.5 175.5,198.5" transform="rotate(210 140 100)"/>
+                        <polygon points="148,184 152.5,198.5 167.5,198.5 155.8,207 160.2,221.5 148,213 135.8,221.5 140.2,207 128.5,198.5 143.5,198.5" transform="rotate(240 140 100)"/>
+                        <polygon points="116,172 120.5,186.5 135.5,186.5 123.8,195 128.2,209.5 116,201 103.8,209.5 108.2,195 96.5,186.5 111.5,186.5" transform="rotate(270 140 100)"/>
+                        <polygon points="88,150 92.5,164.5 107.5,164.5 95.8,173 100.2,187.5 88,179 75.8,187.5 80.2,173 68.5,164.5 83.5,164.5" transform="rotate(300 140 100)"/>
+                        <polygon points="70,120 74.5,134.5 89.5,134.5 77.8,143 82.2,157.5 70,149 57.8,157.5 62.2,143 50.5,134.5 65.5,134.5" transform="rotate(330 140 100)"/>
+                    </g>
+                </svg>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Solar panel body -->
+                    <rect x="3" y="7" width="26" height="18" rx="2" stroke="#f59e0b" stroke-width="2" fill="none"/>
+                    <!-- Grid lines vertical -->
+                    <line x1="11.67" y1="7" x2="11.67" y2="25" stroke="#f59e0b" stroke-width="1.5"/>
+                    <line x1="20.33" y1="7" x2="20.33" y2="25" stroke="#f59e0b" stroke-width="1.5"/>
+                    <!-- Grid lines horizontal -->
+                    <line x1="3" y1="15" x2="29" y2="15" stroke="#f59e0b" stroke-width="1.5"/>
+                    <!-- Sun rays -->
+                    <circle cx="16" cy="4" r="2" fill="#f59e0b"/>
+                    <line x1="16" y1="1" x2="16" y2="0" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="16" y1="6" x2="16" y2="7" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="13" y1="4" x2="12" y2="4" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="19" y1="4" x2="20" y2="4" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                European Solar Asset Analytics (1986-2015)
+            </h2>
+        </div>
+        
+        <!-- Filters row -->
+        <div class="filter-legend" style="flex-shrink: 0;">
+            <div class="d-flex justify-content-start align-items-center gap-3">
+                <label for="countryFilter" style="font-size: 13px; font-weight: 600; color: #555; margin: 0;">Countries:</label>
+                <select id="countryFilter" class="form-select form-select-sm" style="width: 250px;">
+                    <option value="all">All countries</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Charts row: two panels side-by-side -->
+        <div class="charts-row">
+            <!-- Left column: Chart 1 (2/3) and Chart 3 (1/3) side by side -->
+            <div class="chart-col" style="flex-direction: row; gap: 8px;">
+                <!-- Chart 3: European Solar Resource Corridor (1/3) -->
+                <div id="chart3-panel" class="chart-panel" style="flex: 1;">
+                    <div id="chart3-header" style="padding: 8px 10px 0 10px; position: relative;">
+                        <button id="chart3-fullscreen-btn" title="Expand to fullscreen (Esc to exit)" style="position: absolute; top: 8px; right: 10px; padding: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                        </button>
+                        <div style="font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 4px;">European Solar Resource Corridor</div>
+                        <div style="font-size: 9px; color: #666; margin-bottom: 6px; line-height: 1.3;">Multi-line chart showing climate trends for all 21 European countries from 1986 to 2015.</div>
+                        <div style="font-size: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 2px; background: #888;"></div>
+                                <span>Country Trend</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 2px; background: #e65100;"></div>
+                                <span>P50 Median (Benchmark)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 3px; background: #007BFF;"></div>
+                                <span>5-Year SMA (European Average)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="chart3-scroll" style="overflow-x: auto; overflow-y: hidden; flex: 1; min-height: 0;">
+                        <div id="chart3-svg-wrapper" style="height: 100%; min-width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Chart 1: Solar Yield & Stability Map (2/3) -->
+                <div id="chart-panel" class="chart-panel" style="flex: 2;">
+                    <div id="chart-header" style="padding: 8px 10px 4px 10px; position: relative;">
+                        <button id="chart1-fullscreen-btn" title="Expand to fullscreen (Esc to exit)" style="position: absolute; top: 8px; right: 10px; padding: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                        </button>
+                        <div style="font-size: 13px; font-weight: 700; color: #2c3e50; text-align: left; margin-bottom: 4px;">Solar Yield & Stability Map</div>
+                        <div style="font-size: 9px; color: #666; margin-bottom: 6px; line-height: 1.3;">This is a "heat map" of Europe showing the geography of yield and risk. Each dot represents a single region (NUTS-2). Colors indicate the Winter Gap metric (winter vs summer solar yield disparity).</div>
+                        <div style="font-size: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 10px; background: #4caf50; border-radius: 2px;"></div>
+                                <span>Low Winter Gap (&lt;0.25)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 10px; background: #1565c0; border-radius: 2px;"></div>
+                                <span>Moderate (0.25–0.50)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 10px; background: #ff9800; border-radius: 2px;"></div>
+                                <span>High (0.50–0.75)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 10px; background: #d32f2f; border-radius: 2px;"></div>
+                                <span>Critical (&gt;0.75)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="chart-scroll" style="overflow-x: auto; overflow-y: hidden; flex: 1; min-height: 0;">
+                        <div id="chart-svg-wrapper" style="height: 100%; min-width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column: Chart 2 (top 1/2) and Chart 4 (bottom 1/2) -->
+            <div class="chart-col">
+                <!-- Chart 2: Yield Volatility & Risk (top 1/2) -->
+                <div id="chart2-panel" class="chart-panel" style="flex: 1;">
+                    <div id="chart2-header" style="padding: 8px 10px 0 10px; position: relative;">
+                        <button id="chart2-fullscreen-btn" title="Expand to fullscreen (Esc to exit)" style="position: absolute; top: 8px; right: 10px; padding: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                        </button>
+                        <div style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-bottom: 4px;">
+                            <div style="font-size: 13px; font-weight: 700; color: #2c3e50;">Yield Volatility & Risk by Region</div>
+                            <div id="chart2-nav" style="display: flex; align-items: center; gap: 6px;">
+                                <button id="chart2-prev" style="padding: 1px 8px; font-size: 11px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: #fff;">‹</button>
+                                <span id="chart2-page-info" style="font-size: 10px; color: #555;">1 / 1</span>
+                                <button id="chart2-next" style="padding: 1px 8px; font-size: 11px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: #fff;">›</button>
+                            </div>
+                        </div>
+                        <div style="font-size: 9px; color: #666; margin-bottom: 6px; line-height: 1.3;">This is the risk profile for each region. It shows not just the "average sun," but the spread of outcomes: from a bad year (P10) to an exceptionally good year (P90).</div>
+                        <div style="font-size: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 10px; background: #c0c0c0; border-radius: 2px;"></div>
+                                <span>P50 (Median)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 2px; background: #333;"></div>
+                                <span>P10–P90 Range</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="chart2-scroll" style="overflow-x: auto; overflow-y: hidden; flex: 1; min-height: 0;">
+                        <div id="chart2-svg-wrapper" style="height: 100%; min-width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Chart 4: Downside Risk Scatter (bottom 1/2) -->
+                <div id="chart4-panel" class="chart-panel" style="flex: 1; margin-top: 8px;">
+                    <div id="chart4-header" style="padding: 8px 10px 0 10px; position: relative;">
+                        <button id="chart4-fullscreen-btn" title="Expand to fullscreen (Esc to exit)" style="position: absolute; top: 8px; right: 10px; padding: 4px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                        </button>
+                        <div style="font-size: 13px; font-weight: 700; color: #2c3e50; margin-bottom: 4px;">Downside Risk Scatter (P50 vs P10)</div>
+                        <div style="font-size: 9px; color: #666; margin-bottom: 6px; line-height: 1.3;">Scatter plot showing the relationship between expected yield (P50) and downside yield (P10). Points further below the diagonal line indicate higher downside risk.</div>
+                        <div style="font-size: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 3px;">
+                                <div style="width: 10px; height: 10px; background: #1565c0; border-radius: 50%;"></div>
+                                <span>Region</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="chart4-scroll" style="overflow-x: auto; overflow-y: hidden; flex: 1; min-height: 0;">
+                        <div id="chart4-svg-wrapper" style="height: 100%; min-width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        const margin = {top: 15, right: 30, bottom: 110, left: 60};
+        let width, height;
+        let svg;
+
+        function initChart() {
+            d3.select("#chart-svg-wrapper svg").remove();
+            const container = document.getElementById('chart-svg-wrapper');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            width = containerWidth - margin.left - margin.right;
+            height = containerHeight - margin.top - margin.bottom;
+
+            svg = d3.select("#chart-svg-wrapper")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+        }
+
+        const tooltip = d3.select("#tooltip");
+
+        // Smart tooltip positioning - keeps tooltip visible within viewport
+        function positionTooltip(event) {
+            const tooltipNode = document.getElementById('tooltip');
+            const tooltipRect = tooltipNode.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            let left = event.pageX + 15;
+            let top = event.pageY - 28;
+            
+            // If tooltip would go off right edge
+            if (left + tooltipRect.width > viewportWidth - 10) {
+                left = event.pageX - tooltipRect.width - 15;
+            }
+            
+            // If tooltip would go off bottom edge
+            if (top + tooltipRect.height > viewportHeight - 10) {
+                top = viewportHeight - tooltipRect.height - 10;
+            }
+            
+            // If tooltip would go off left edge
+            if (left < 10) {
+                left = 10;
+            }
+            
+            // If tooltip would go off top edge
+            if (top < 10) {
+                top = 10;
+            }
+            
+            return { left: left + 'px', top: top + 'px' };
+        }
+
+        // Parse ClickHouse data
+        function parseData(raw) {
+            return raw.map(r => ({
+                region_name: r[0],
+                mean_value: parseFloat(r[1]),
+                risk_cv: parseFloat(r[2]),
+                country: r[3] || 'N/A',
+                winter_gap: parseFloat(r[4]) || 0
+            }));
+        }
+
+        // Function to aggregate winter_gap by hexbin cell
+        function aggregateWinterGapByCell(data, xScale, yScale, hexRadius) {
+            const hexbin = d3.hexbin()
+                .radius(hexRadius)
+                .x(d => xScale(d.mean_value))
+                .y(d => yScale(d.risk_cv));
+            
+            const bins = hexbin(data);
+            
+            const cellMap = new Map();
+            bins.forEach(bin => {
+                const key = `${bin.x.toFixed(3)}_${bin.y.toFixed(3)}`;
+                cellMap.set(key, {
+                    x: bin.x,
+                    y: bin.y,
+                    points: bin,
+                    winter_gap_avg: d3.mean(bin.map(p => p.winter_gap)) || 0,
+                    length: bin.length
+                });
+            });
+            
+            return Array.from(cellMap.values());
+        }
+
+        // Create Hexbin Plot
+        function createHexbinPlot(data) {
+            window._chart1ActiveCell = null;
+            tooltip.transition().duration(0).style("opacity", 0);
+            // RENDER ORDER MATTERS:
+            // 1. SCALES
+            const xScale = d3.scaleLinear().range([0, width]);
+            const yScale = d3.scaleLinear().range([height, 0]);
+
+            // Update domains
+            xScale.domain(d3.extent(data, d => d.mean_value)).nice();
+            yScale.domain(d3.extent(data, d => d.risk_cv)).nice();
+
+            // Clear previous content (axes, lines, points)
+            svg.selectAll("*").remove();
+
+            // 2. GRID LINES (Must be BEFORE axes)
+            const xMeanVal = d3.mean(data, d => d.mean_value) || 0;
+            const yMeanVal = d3.mean(data, d => d.risk_cv) || 0;
+
+            // Vertical line: Mean Investment
+            svg.append("line")
+                .attr("x1", xScale(xMeanVal))
+                .attr("x2", xScale(xMeanVal))
+                .attr("y1", 0)
+                .attr("y2", height)
+                .attr("stroke", "#90a4ae")
+                .attr("stroke-dasharray", "4,2")
+                .attr("stroke-width", 1);
+            
+            // Horizontal line: Mean Risk
+            svg.append("line")
+                .attr("x1", 0)
+                .attr("x2", width)
+                .attr("y1", yScale(yMeanVal))
+                .attr("y2", yScale(yMeanVal))
+                .attr("stroke", "#90a4ae")
+                .attr("stroke-dasharray", "4,2")
+                .attr("stroke-width", 1);
+
+            // 3. HEXAGONS
+        // Create hexbin and aggregate winter_gap
+        const hexRadius = 20;
+        const hexbin = d3.hexbin()
+            .radius(hexRadius)
+            .x(d => xScale(d.mean_value))
+            .y(d => yScale(d.risk_cv));
+        const bins = aggregateWinterGapByCell(data, xScale, yScale, hexRadius);
+
+        const gapColors = ['#4caf50', '#1565c0', '#ff9800', '#d32f2f']; // green, blue, orange, red
+
+        function getGapColor(avgGap) {
+            if (avgGap < 0.25) return gapColors[0];
+            if (avgGap < 0.50) return gapColors[1];
+            if (avgGap < 0.75) return gapColors[2];
+            return gapColors[3];
+        }
+
+        svg.append("g")
+            .attr("class", "hexagons")
+            .selectAll("path")
+            .data(bins)
+            .enter().append("path")
+            .attr("class", "hexagon")
+            .attr("d", hexbin.hexagon())
+            .attr("transform", d => `translate(${d.x},${d.y})`)
+            .attr("fill", d => getGapColor(d.winter_gap_avg))
+            .attr("stroke", "#333")
+            .attr("stroke-width", 0.5)
+            .attr("opacity", 0.75)
+            .on("click", function(event, d) {
+                event.stopPropagation();
+                
+                // Determine zone by cell coordinates
+                const xMeanVal = d3.mean(data, d => d.mean_value) || 0;
+                const yMeanVal = d3.mean(data, d => d.risk_cv) || 0;
+                let zone = '';
+                if (d.x > xScale(xMeanVal) && d.y < yScale(yMeanVal)) {
+                    zone = 'High Risk (Top Right): High sun, but volatile years';
+                } else if (d.x > xScale(xMeanVal) && d.y >= yScale(yMeanVal)) {
+                    zone = 'Safe Haven (Bottom Right): High sun, stable. (Investor\'s target)';
+                } else if (d.x <= xScale(xMeanVal) && d.y >= yScale(yMeanVal)) {
+                    zone = 'Low Yield (Bottom Left): Stable, but low sun';
+                } else {
+                    zone = 'Avoid (Top Left): Low sun and volatile';
+                }
+                
+                const gapColor = getGapColor(d.winter_gap_avg);
+                
+                // List all regions in the cell
+                const regions = d.points.map(p => {
+                    return `${p.region_name} (${p.country}, yield=${p.mean_value.toFixed(4)}, cv=${p.risk_cv.toFixed(4)}, gap=${p.winter_gap.toFixed(2)})`;
+                }).join('<br>');
+                
+                // Toggle tooltip: hide if same cell clicked, show otherwise
+                if (window._chart1ActiveCell && window._chart1ActiveCell !== d) {
+                    d3.select(window._chart1ActiveCell).transition().duration(100).attr('opacity', 0.75);
+                }
+                
+                tooltip.html(`
+                    <h6 style="margin: 0 0 8px 0; color: #2c3e50;">${zone}</h6>
+                    <div><strong>Number of regions:</strong> ${d.points.length}</div>
+                    <div><strong>Average Winter Gap:</strong> <span style="color:${gapColor}; font-weight:bold;">${d.winter_gap_avg.toFixed(2)}</span> <span style="font-size:10px;color:#888;">(seasonality)</span></div>
+                    <div style="margin-top: 8px; font-size: 12px;"><strong>Regions:</strong></div>
+                    <div style="font-size: 11px; color: #555; margin-top: 2px; max-height: 150px; overflow-y: auto; line-height: 1.6; padding-right: 6px;" id="chart1-regions-list">
+                        ${regions}
+                    </div>
+                    <div style="margin-top: 8px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 4px;">
+                        <em>yield — mean value, risk_cv — coefficient of variation, winter_gap — winter/summer gap</em>
+                    </div>
+                `)
+                .style("left", positionTooltip(event).left)
+                .style("top", positionTooltip(event).top)
+                .style("max-height", "400px")
+                .style("overflow-y", "auto")
+                .transition().duration(200).style("opacity", 0.98);
+                
+                d3.select(this).transition().duration(100).attr('opacity', 1);
+                window._chart1ActiveCell = d;
+            })
+            .on("mouseout", function() {
+                // Do nothing on mouseout — only hide on click outside
+            });
+
+            // Click outside to close tooltip
+            d3.select("body").on("click", function() {
+                tooltip.transition().duration(200).style("opacity", 0);
+                if (window._chart1ActiveCell) {
+                    d3.select(window._chart1ActiveCell).transition().duration(100).attr('opacity', 0.75);
+                    window._chart1ActiveCell = null;
+                }
+            });
+
+            // 4. AXES
+            const xAxis = d3.axisBottom(xScale).ticks(10).tickFormat(d => d.toFixed(2));
+            const yAxis = d3.axisLeft(yScale).ticks(10).tickFormat(d => d.toFixed(2));
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis)
+              .append("text")
+                .attr("x", width / 2)
+                .attr("y", 50)
+                .attr("fill", "#000")
+                .attr("text-anchor", "middle")
+                .attr("font-weight", "600")
+                .text("Mean Capacity Factor");
+
+            svg.append("g")
+                .call(yAxis)
+              .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("x", -height / 2)
+                .attr("y", -45)
+                .attr("fill", "#000")
+                .attr("text-anchor", "middle")
+                .attr("font-weight", "600")
+                .text("Interannual Volatility / CV");
+
+            // 5. POINTS (Dynamic circles)
+            svg.selectAll("circle")
+                .data(data)
+                .enter().append("circle")
+                .attr("cx", d => xScale(d.mean_value))
+                .attr("cy", d => yScale(d.risk_cv))
+                .attr("r", 4)
+                .attr("fill", d => d.winter_gap < 0.25 ? '#4caf50' : (d.winter_gap < 0.50 ? '#1565c0' : (d.winter_gap < 0.75 ? '#ff9800' : '#d32f2f')))
+                .attr("stroke", d => d.winter_gap < 0.25 ? '#2e7d32' : (d.winter_gap < 0.50 ? '#0d47a1' : (d.winter_gap < 0.75 ? '#e65100' : '#b71c1c')))
+                .attr("stroke-width", 1.5)
+                .attr("opacity", 0.85)
+                .style("cursor", "pointer")
+                .on("mouseover", function(event, d) {
+                    d3.select(this).transition().duration(100).attr("r", 7).attr("opacity", 1);
+                    
+                    const gapColor = d.winter_gap < 0.25 ? '#4caf50' : (d.winter_gap < 0.50 ? '#1565c0' : (d.winter_gap < 0.75 ? '#ff9800' : '#d32f2f'));
+                    const gapLabel = d.winter_gap < 0.25 ? 'Low' : (d.winter_gap < 0.50 ? 'Moderate' : (d.winter_gap < 0.75 ? 'High' : 'Critical'));
+                    
+                    tooltip.html(`
+                        <h6 style="margin: 0 0 5px 0; color: #2c3e50;">${d.region_name}</h6>
+                        <div style="font-size: 11px; color: #666; margin-bottom: 6px;">${d.country}</div>
+                        <div><strong>Mean CF:</strong> ${(d.mean_value * 100).toFixed(2)}%</div>
+                        <div><strong>Risk (CV):</strong> ${(d.risk_cv * 100).toFixed(2)}%</div>
+                        <div><strong>Winter Gap:</strong> <span style="color:${gapColor}; font-weight:bold;">${d.winter_gap.toFixed(2)}</span> <span style="font-size:10px;color:#888;">(${gapLabel})</span></div>
+                    `)
+                    .style("left", positionTooltip(event).left)
+                    .style("top", positionTooltip(event).top)
+                    .transition().duration(200).style("opacity", 0.98);
+                })
+                .on("mouseout", function(event, d) {
+                    d3.select(this).transition().duration(100).attr("r", 4).attr("opacity", 0.85);
+                    tooltip.transition().duration(200).style("opacity", 0);
+                });
+
+            // 6. QUADRANT LABELS (Quadrants — at chart corners)
+            const labelOffset = 20;
+            const quadrantTexts = [
+                { x: xScale(xMeanVal) + labelOffset, y: labelOffset, anchor: 'start', text: 'High Risk' },
+                { x: xScale(xMeanVal) + labelOffset, y: height - labelOffset, anchor: 'start', text: 'Safe Haven' },
+                { x: xScale(xMeanVal) - labelOffset, y: height - labelOffset, anchor: 'end', text: 'Low Yield' },
+                { x: xScale(xMeanVal) - labelOffset, y: labelOffset, anchor: 'end', text: 'Avoid' }
+            ];
+
+            quadrantTexts.forEach(q => {
+                svg.append('text')
+                    .attr('x', q.x)
+                    .attr('y', q.y - 4)
+                    .attr('text-anchor', q.anchor)
+                    .attr('font-size', '14px')
+                    .attr('font-weight', '700')
+                    .attr('fill', '#333')
+                    .style('pointer-events', 'none')
+                    .text(q.text);
+            });
+        }
+
+        // Main logic
+        let windowChartAllData = [];
+        
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/metrics');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const raw = await response.json();
+                
+                // Format check (ClickHouse returns a flat array)
+        const data = parseData(raw);
+        
+        if (data.length === 0) {
+            d3.select("#chart-svg-wrapper").html("<h4>No data</h4><p>Check ClickHouse</p>");
+            return;
+        }
+
+        windowChartAllData = data;
+        
+        initChart();
+        createHexbinPlot(data);
+        
+        // Populate country filter
+        const countries = [...new Set(data.map(d => d.country))].sort();
+        const filter = document.getElementById('countryFilter');
+        filter.innerHTML = '<option value="all">All countries</option>' + countries.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        filter.addEventListener('change', () => {
+            const selected = filter.value;
+            const filtered = selected === 'all' ? windowChartAllData : windowChartAllData.filter(d => d.country === selected);
+            if (filtered.length > 0) {
+                requestAnimationFrame(() => {
+                    createHexbinPlot(filtered);
+                });
+                fetchRegionPercentiles();
+                fetchCountryTrendData();
+            }
+        });
+        
+        // Create winter_gap map by regions for tooltips
+        const winterGapByRegion = new Map();
+        data.forEach(d => {
+            const key = `${d.region_name}-${d.country}`;
+            if (!winterGapByRegion.has(key)) {
+                winterGapByRegion.set(key, []);
+            }
+            winterGapByRegion.get(key).push(d.winter_gap);
+        });
+        
+        // Average winter_gap per region
+        winterGapByRegion.forEach((values, key) => {
+            winterGapByRegion.set(key, d3.mean(values));
+        });
+
+            } catch (error) {
+                console.error("Error:", error);
+                d3.select("#chart-svg-wrapper").html(`<h4 style="color:red;">Error</h4><pre>${error.message}</pre>`);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                fetchData();
+                fetchPercentilesData();
+                fetchCountryTrendData();
+            }, 100);
+        });
+
+        // ========== Chart 2: Yield Volatility & Risk Bar Chart ==========
+        const margin2 = {top: 25, right: 20, bottom: 80, left: 50};
+        let width2, height2;
+        let svg2, svgClip2;
+        let allPercentileData = [];
+        const PAGE_SIZE = 20;
+        let currentPage = 0;
+        let totalPages = 1;
+
+        function initChart2() {
+            const container = document.getElementById('chart2-svg-wrapper');
+            const containerWidth = container.clientWidth || 600;
+            const containerHeight = container.clientHeight || 350;
+            width2 = containerWidth - margin2.left - margin2.right;
+            height2 = containerHeight - margin2.top - margin2.bottom;
+
+            // Remove existing svg if any
+            d3.select("#chart2-svg-wrapper svg").remove();
+
+            svg2 = d3.select("#chart2-svg-wrapper")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${margin2.left},${margin2.top})`);
+
+            // Add clip path for scrolling
+            svg2.insert("defs", ":first-child").append("clipPath")
+                .attr("id", "chart2-clip")
+                .append("rect")
+                .attr("width", width2)
+                .attr("height", height2);
+        }
+
+        function parsePercentilesData(raw) {
+            return raw.map(r => ({
+                region_name: r[0],
+                country: r[1],
+                p10_cf: parseFloat(r[2]),
+                p50_cf: parseFloat(r[3]),
+                p90_cf: parseFloat(r[4]),
+                p99_cf: parseFloat(r[5]),
+                p90_p10_spread: parseFloat(r[6])
+            }));
+        }
+
+        function createBarChartWithErrors(data, page) {
+            // Clear previous content
+            svg2.selectAll("*").remove();
+
+            // Sort by p50_cf descending
+            data.sort((a, b) => b.p50_cf - a.p50_cf);
+
+            // Paginate: show PAGE_SIZE items per page
+            const start = page * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            const pageData = data.slice(start, end);
+
+            // Scales
+            const x0 = d3.scaleBand()
+                .domain(pageData.map(d => d.region_name))
+                .range([0, width2])
+                .padding(0.3);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(pageData, d => d.p90_cf) * 1.1])
+                .nice()
+                .range([height2, 0]);
+
+            // X Axis
+            svg2.append("g")
+                .attr("transform", `translate(0,${height2})`)
+                .call(d3.axisBottom(x0).tickSize(0))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .attr("transform", "rotate(-30)")
+                .style("text-anchor", "end")
+                .attr("dx", "-0.5em")
+                .attr("dy", "0.15em")
+                .style("font-size", "8px")
+                .style("fill", "#333");
+
+            // Y Axis
+            svg2.append("g")
+                .call(d3.axisLeft(y).ticks(8).tickFormat(d => d.toFixed(2)))
+                .call(g => g.select(".domain").remove())
+                .selectAll("line, text")
+                .style("font-size", "11px");
+
+            // Y Axis Label
+            svg2.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin2.left + 15)
+                .attr("x", -height2 / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-weight", "600")
+                .style("fill", "#555")
+                .text("Capacity Factor (CF)");
+
+            // Grid lines
+            svg2.append("g")
+                .call(d3.axisLeft(y).ticks(8).tickSize(-width2).tickFormat(""))
+                .call(g => g.selectAll("line").attr("stroke", "#eee"))
+                .call(g => g.selectAll(".domain").remove());
+
+            // Error bars (P10 to P90)
+            svg2.selectAll(".error-bar")
+                .data(pageData)
+                .enter().append("line")
+                .attr("class", "error-bar")
+                .attr("x1", d => x0(d.region_name) + x0.bandwidth() / 2)
+                .attr("x2", d => x0(d.region_name) + x0.bandwidth() / 2)
+                .attr("y1", d => y(d.p10_cf))
+                .attr("y2", d => y(d.p90_cf))
+                .attr("stroke", "#333")
+                .attr("stroke-width", 2);
+
+            // Error bar caps (P10)
+            svg2.selectAll(".error-cap-bottom")
+                .data(pageData)
+                .enter().append("line")
+                .attr("class", "error-cap-bottom")
+                .attr("x1", d => x0(d.region_name) + x0.bandwidth() / 2 - x0.bandwidth() * 0.2)
+                .attr("x2", d => x0(d.region_name) + x0.bandwidth() / 2 + x0.bandwidth() * 0.2)
+                .attr("y1", d => y(d.p10_cf))
+                .attr("y2", d => y(d.p10_cf))
+                .attr("stroke", "#333")
+                .attr("stroke-width", 2);
+
+            // Error bar caps (P90)
+            svg2.selectAll(".error-cap-top")
+                .data(pageData)
+                .enter().append("line")
+                .attr("class", "error-cap-top")
+                .attr("x1", d => x0(d.region_name) + x0.bandwidth() / 2 - x0.bandwidth() * 0.2)
+                .attr("x2", d => x0(d.region_name) + x0.bandwidth() / 2 + x0.bandwidth() * 0.2)
+                .attr("y1", d => y(d.p90_cf))
+                .attr("y2", d => y(d.p90_cf))
+                .attr("stroke", "#333")
+                .attr("stroke-width", 2);
+
+            // Bars (P50)
+            svg2.selectAll(".bar")
+                .data(pageData)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x0(d.region_name))
+                .attr("width", x0.bandwidth())
+                .attr("y", d => y(d.p50_cf))
+                .attr("height", d => height2 - y(d.p50_cf))
+                .attr("fill", "#c0c0c0")
+                .attr("rx", 2)
+                .attr("opacity", 0.35)
+                .style("cursor", "pointer")
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("opacity", 0.55).attr("fill", "#a0a0a0");
+                    
+                    const volatility = d.p90_cf - d.p10_cf;
+                    const downside = d.p10_cf;
+                    const riskLevel = volatility < 0.03 ? 'Low' : (volatility < 0.06 ? 'Moderate' : 'High');
+                    
+                    tooltip.html(`
+                        <h6 style="margin: 0 0 8px 0; color: #2c3e50;">${d.region_name}</h6>
+                        <div style="font-size: 11px; color: #666; margin-bottom: 6px;">${d.country}</div>
+                        <div><strong>P50 (Median):</strong> ${d.p50_cf.toFixed(4)}</div>
+                        <div><strong>P90 (Optimistic):</strong> ${d.p90_cf.toFixed(4)}</div>
+                        <div><strong>P10 (Bad year):</strong> <span style="color: #d32f2f; font-weight: bold;">${d.p10_cf.toFixed(4)}</span></div>
+                        <hr style="margin: 6px 0; border-color: #eee;">
+                        <div><strong>Volatility (P90-P10):</strong> <span style="color: ${riskLevel === 'High' ? '#d32f2f' : riskLevel === 'Moderate' ? '#ff9800' : '#4caf50'}; font-weight: bold;">${volatility.toFixed(4)}</span></div>
+                        <div><strong>Downside Risk (P10):</strong> ${downside.toFixed(4)}</div>
+                        <div style="margin-top: 6px; font-size: 11px; color: #888;">
+                            <em>Risk: ${riskLevel}</em>
+                        </div>
+                    `)
+                    .style("left", positionTooltip(event).left)
+                    .style("top", positionTooltip(event).top)
+                    .transition().duration(200).style("opacity", 0.98);
+                })
+                .on("mouseout", function() {
+                    d3.select(this).attr("opacity", 0.35).attr("fill", "#c0c0c0");
+                    tooltip.transition().duration(300).style("opacity", 0);
+                });
+
+            // Update pagination info
+            totalPages = Math.ceil(data.length / PAGE_SIZE);
+            document.getElementById('chart2-page-info').textContent = `${page + 1} / ${totalPages}`;
+            document.getElementById('chart2-prev').disabled = (page === 0);
+            document.getElementById('chart2-next').disabled = (page >= totalPages - 1);
+        }
+
+        // Fetch region-percentiles once and populate both Chart 2 and Chart 4
+        async function fetchRegionPercentiles() {
+            try {
+                const countryFilter = document.getElementById('countryFilter').value;
+                const url = countryFilter !== 'all' 
+                    ? `/api/region-percentiles?country=${encodeURIComponent(countryFilter)}`
+                    : '/api/region-percentiles';
+                    
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const raw = await response.json();
+                
+                allPercentileData = parsePercentilesData(raw);
+                allScatterData = raw.map(r => ({
+                    region_name: r[0],
+                    country: r[1],
+                    p10_cf: parseFloat(r[2]),
+                    p50_cf: parseFloat(r[3])
+                }));
+                
+                if (allPercentileData.length === 0) {
+                    d3.select("#chart2").html("<h4>No data</h4><p>Check ClickHouse</p>");
+                    d3.select("#chart4").html("<h4>No data</h4><p>Check ClickHouse</p>");
+                    return;
+                }
+
+                currentPage = 0;
+                initChart2();
+                createBarChartWithErrors(allPercentileData, currentPage);
+                initChart4();
+                createScatterPlot(allScatterData, countryFilter);
+            } catch (error) {
+                console.error("Error fetching region percentiles:", error);
+                d3.select("#chart2").html(`<h4 style="color:red;">Error</h4><pre>${error.message}</pre>`);
+                d3.select("#chart4").html(`<h4 style="color:red;">Error</h4><pre>${error.message}</pre>`);
+            }
+        }
+
+        // Pagination handlers
+        document.getElementById('chart2-prev').addEventListener('click', () => {
+            if (currentPage > 0) {
+                currentPage--;
+                initChart2();
+                createBarChartWithErrors(allPercentileData, currentPage);
+            }
+        });
+
+        document.getElementById('chart2-next').addEventListener('click', () => {
+            totalPages = Math.ceil(allPercentileData.length / PAGE_SIZE);
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                initChart2();
+                createBarChartWithErrors(allPercentileData, currentPage);
+            }
+        });
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                d3.select('#chart-svg-wrapper svg').remove();
+                initChart();
+                fetch('/api/metrics')
+                    .then(r => r.json())
+                    .then(raw => {
+                        const data = parseData(raw);
+                        if (data.length > 0) {
+                            requestAnimationFrame(() => {
+                                createHexbinPlot(data);
+                            });
+                        }
+                    });
+                
+                // Resize Chart 2 & 4 (shared data)
+                d3.select('#chart2-svg-wrapper svg').remove();
+                d3.select('#chart4-svg-wrapper svg').remove();
+                const countryFilter24 = document.getElementById('countryFilter').value;
+                const url2 = countryFilter24 !== 'all' 
+                    ? `/api/region-percentiles?country=${encodeURIComponent(countryFilter24)}`
+                    : '/api/region-percentiles';
+                fetch(url2)
+                    .then(r => r.json())
+                    .then(raw => {
+                        allPercentileData = parsePercentilesData(raw);
+                        allScatterData = raw.map(r => ({
+                            region_name: r[0],
+                            country: r[1],
+                            p10_cf: parseFloat(r[2]),
+                            p50_cf: parseFloat(r[3])
+                        }));
+                        currentPage = 0;
+                        initChart2();
+                        createBarChartWithErrors(allPercentileData, currentPage);
+                        initChart4();
+                        createScatterPlot(allScatterData, countryFilter24);
+                    });
+                
+                // Resize Chart 3
+                d3.select('#chart3-svg-wrapper svg').remove();
+                const countryFilter3 = document.getElementById('countryFilter').value;
+                if (allCountryTrendData.length > 0) {
+                    initChart3();
+                    createSpaghettiPlot(countryFilter3);
+                }
+            }, 300);
+        });
+
+        // ========== Chart 3: European Solar Resource Corridor (Spaghetti Plot) ==========
+        const margin3 = {top: 25, right: 30, bottom: 80, left: 50};
+        let width3, height3;
+        let svg3;
+        let allCountryTrendData = [];
+
+        function initChart3() {
+            const container = document.getElementById('chart3-svg-wrapper');
+            const containerWidth = container.clientWidth || 600;
+            const containerHeight = container.clientHeight || 350;
+            width3 = containerWidth - margin3.left - margin3.right;
+            height3 = containerHeight - margin3.top - margin3.bottom;
+
+            // Remove existing svg if any
+            d3.select("#chart3-svg-wrapper svg").remove();
+
+            svg3 = d3.select("#chart3-svg-wrapper")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${margin3.left},${margin3.top})`);
+        }
+
+        function createSpaghettiPlot(filterCountry) {
+            // Clear previous content
+            svg3.selectAll("*").remove();
+
+            // Filter data for grey lines
+            const filteredData = filterCountry && filterCountry !== 'all'
+                ? allCountryTrendData.filter(d => d.country === filterCountry)
+                : allCountryTrendData;
+
+            // Group filtered data by country
+            const countries = [...new Set(filteredData.map(d => d.country))];
+            const grouped = {};
+            countries.forEach(c => {
+                grouped[c] = filteredData
+                    .filter(d => d.country === c)
+                    .map(d => ({ year: d.year, mean_cf: d.mean_cf }))
+                    .sort((a, b) => a.year - b.year);
+            });
+
+            // Scales - based on ALL data
+            const x = d3.scaleLinear()
+                .domain([1986, 2015])
+                .range([0, width3]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(allCountryTrendData, d => d.mean_cf) * 1.1])
+                .nice()
+                .range([height3, 0]);
+
+            // X Axis
+            svg3.append("g")
+                .attr("transform", `translate(0,${height3})`)
+                .call(d3.axisBottom(x).ticks(10).tickFormat(d => d))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .attr("transform", "rotate(-90)")
+                .style("text-anchor", "end")
+                .attr("dx", "-0.5em")
+                .attr("dy", "-0.45em")
+                .style("font-size", "8px")
+                .style("fill", "#555");
+
+            // Y Axis
+            svg3.append("g")
+                .call(d3.axisLeft(y).ticks(8).tickFormat(d => d.toFixed(2)))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .style("font-size", "11px");
+
+            // Y Axis Label
+            svg3.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin3.left + 15)
+                .attr("x", -height3 / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-weight", "600")
+                .style("fill", "#555")
+                .text("Mean Capacity Factor");
+
+            // X Axis Label
+            svg3.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("x", -height3 / 2)
+                .attr("y", -(margin3.left) - 40)
+                .attr("text-anchor", "middle")
+                .style("font-size", "12px")
+                .style("font-weight", "600")
+                .style("fill", "#555")
+                .text("Year");
+
+            // Grid lines
+            svg3.append("g")
+                .call(d3.axisLeft(y).ticks(8).tickSize(-width3).tickFormat(""))
+                .call(g => g.selectAll("line").attr("stroke", "#eee"))
+                .call(g => g.selectAll(".domain").remove());
+
+            // Line generator
+            const line = d3.line()
+                .x(d => x(d.year))
+                .y(d => y(d.mean_cf))
+                .curve(d3.curveMonotoneX);
+
+            // Draw individual country lines (filtered)
+            Object.keys(grouped).forEach(country => {
+                svg3.append("path")
+                    .datum(grouped[country])
+                    .attr("fill", "none")
+                    .attr("stroke", "#aaa")
+                    .attr("stroke-width", 1)
+                    .attr("opacity", 0.4)
+                    .attr("d", line);
+            });
+
+            // Calculate P50 (median) per year from ALL data
+            const years = [...new Set(allCountryTrendData.map(d => d.year))].sort();
+            const p50Data = years.map(year => {
+                const values = allCountryTrendData
+                    .filter(d => d.year === year)
+                    .map(d => d.mean_cf)
+                    .sort((a, b) => a - b);
+                const median = d3.median(values);
+                return { year, mean_cf: median };
+            });
+
+            // Draw P50 benchmark line (always from all countries)
+            svg3.append("path")
+                .datum(p50Data)
+                .attr("fill", "none")
+                .attr("stroke", "#e65100")
+                .attr("stroke-width", 2.5)
+                .attr("d", line);
+
+            // --- Simple Moving Average (5-year window) ---
+            const smaWindow = 2; // ±2 years → 5-year window
+            const allYears = [...new Set(allCountryTrendData.map(d => d.year))].sort();
+            const smaData = allYears.map(year => {
+                const startYear = Math.max(allYears[0], year - smaWindow);
+                const endYear = Math.min(allYears[allYears.length - 1], year + smaWindow);
+                const windowValues = allCountryTrendData
+                    .filter(d => d.year >= startYear && d.year <= endYear)
+                    .map(d => d.mean_cf);
+                const avg = d3.mean(windowValues);
+                return { year, mean_cf: avg };
+            });
+
+            // Draw SMA line — thickest, most prominent, on top
+            svg3.append("path")
+                .datum(smaData)
+                .attr("fill", "none")
+                .attr("stroke", "#007BFF")
+                .attr("stroke-width", 4)
+                .attr("stroke-linecap", "round")
+                .attr("stroke-linejoin", "round")
+                .attr("d", line);
+
+            // Tooltip elements
+            const tooltipGroup = svg3.append("g").attr("opacity", 0);
+            const crossline = svg3.append("line")
+                .attr("stroke", "#999")
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "3,3")
+                .attr("opacity", 0)
+                .attr("y1", 0)
+                .attr("y2", height3);
+
+            // Dots for each country
+            const dots = {};
+            Object.keys(grouped).forEach(country => {
+                dots[country] = tooltipGroup.append("circle")
+                    .attr("r", 4)
+                    .attr("fill", "#e65100")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 1.5)
+                    .attr("opacity", 0);
+            });
+
+            // P50 dot
+            const p50Dot = tooltipGroup.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#e65100")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .attr("opacity", 0);
+
+            // P50 label
+            const p50Label = tooltipGroup.append("text")
+                .attr("font-size", "10px")
+                .attr("font-weight", "600")
+                .attr("fill", "#e65100")
+                .attr("opacity", 0);
+
+            // Overlay rect for mouse events
+            svg3.append("rect")
+                .attr("width", width3)
+                .attr("height", height3)
+                .attr("fill", "none")
+                .attr("pointer-events", "all")
+                .on("mousemove", function(event) {
+                    const [mx] = d3.pointer(event);
+                    const hoveredYear = Math.round(x.invert(mx));
+                    
+                    crossline
+                        .attr("x1", x(hoveredYear))
+                        .attr("x2", x(hoveredYear))
+                        .attr("opacity", 1);
+
+                    // Update dots for each country
+                    const pointsForYear = [];
+                    Object.keys(grouped).forEach(country => {
+                        const point = grouped[country].find(d => d.year === hoveredYear);
+                        if (point) {
+                            pointsForYear.push({ country, mean_cf: point.mean_cf });
+                        }
+                    });
+                    
+                    // Sort by mean_cf descending
+                    pointsForYear.sort((a, b) => b.mean_cf - a.mean_cf);
+                    
+                    let tooltipLines = [];
+                    tooltipLines.push(`<div style="font-weight: 600; margin-bottom: 4px;">📅 ${hoveredYear}</div>`);
+
+                    pointsForYear.forEach(({ country, mean_cf }) => {
+                        const point = grouped[country].find(d => d.year === hoveredYear);
+                        if (point) {
+                            dots[country]
+                                .attr("cx", x(point.year))
+                                .attr("cy", y(point.mean_cf))
+                                .attr("opacity", 1);
+                            tooltipLines.push(
+                                `<div>${country}: <strong>${mean_cf.toFixed(4)}</strong></div>`
+                            );
+                        }
+                    });
+
+                    // P50 dot and label
+                    const p50Point = p50Data.find(d => d.year === hoveredYear);
+                    if (p50Point) {
+                        p50Dot
+                            .attr("cx", x(p50Point.year))
+                            .attr("cy", y(p50Point.mean_cf))
+                            .attr("opacity", 1);
+                        p50Label
+                            .attr("x", x(p50Point.year) + 10)
+                            .attr("y", y(p50Point.mean_cf) - 8)
+                            .text(`P50: ${p50Point.mean_cf.toFixed(4)}`)
+                            .attr("opacity", 1);
+                    }
+
+                    tooltipGroup.attr("opacity", 1);
+
+                    // HTML tooltip
+                    tooltip.html(tooltipLines.join(''))
+                        .style("left", positionTooltip(event).left)
+                        .style("top", positionTooltip(event).top)
+                        .transition().duration(100).style("opacity", 0.95);
+                })
+                .on("mouseleave", function() {
+                    crossline.attr("opacity", 0);
+                    tooltipGroup.attr("opacity", 0);
+                    tooltip.transition().duration(200).style("opacity", 0);
+                });
+        }
+
+        // Fetch and render Chart 3
+        async function fetchCountryTrendData() {
+            try {
+                const response = await fetch('/api/country-trend');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const raw = await response.json();
+                
+                allCountryTrendData = raw.map(r => ({
+                    country: r[0],
+                    year: r[1],
+                    mean_cf: parseFloat(r[2])
+                }));
+                
+                if (allCountryTrendData.length === 0) {
+                    d3.select("#chart3").html("<h4>No data</h4><p>Check ClickHouse</p>");
+                    return;
+                }
+
+                const countryFilter = document.getElementById('countryFilter').value;
+                initChart3();
+                createSpaghettiPlot(countryFilter);
+            } catch (error) {
+                console.error("Error fetching country trend:", error);
+                d3.select("#chart3").html(`<h4 style="color:red;">Error</h4><pre>${error.message}</pre>`);
+            }
+        }
+
+        // ========== Chart 3: Fullscreen Toggle ==========
+        const chart3Panel = document.getElementById('chart3-panel');
+        let chart3IsFullscreen = false;
+
+        function toggleChart3Fullscreen() {
+            // Hide HTML tooltip BEFORE entering fullscreen
+            tooltip.style("opacity", 0);
+            if (!chart3IsFullscreen) {
+                // Enter fullscreen
+                if (chart3Panel.requestFullscreen) {
+                    chart3Panel.requestFullscreen();
+                } else if (chart3Panel.webkitRequestFullscreen) {
+                    chart3Panel.webkitRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        function handleChart3FullscreenChange() {
+            const isFs = !!document.fullscreenElement;
+            if (isFs !== chart3IsFullscreen) {
+                chart3IsFullscreen = isFs;
+                setTimeout(() => {
+                    d3.select('#chart3-svg-wrapper svg').remove();
+                    initChart3();
+                    const countryFilter3 = document.getElementById('countryFilter').value;
+                    createSpaghettiPlot(countryFilter3);
+                }, 300);
+            }
+        }
+
+        document.addEventListener('fullscreenchange', handleChart3FullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleChart3FullscreenChange);
+
+        document.getElementById('chart3-fullscreen-btn').addEventListener('click', toggleChart3Fullscreen);
+
+        // ========== Generic Fullscreen Toggle for Charts 1, 2, 4 ==========
+        function setupFullscreen(panelId, btnId, wrapperId) {
+            const panel = document.getElementById(panelId);
+            const btn = document.getElementById(btnId);
+            if (!panel || !btn) return;
+            let isFullscreen = false;
+
+            function toggle() {
+                // Hide HTML tooltip BEFORE entering fullscreen
+                tooltip.style("opacity", 0);
+                if (!isFullscreen) {
+                    if (panel.requestFullscreen) panel.requestFullscreen();
+                    else if (panel.webkitRequestFullscreen) panel.webkitRequestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+            }
+
+            function onFullscreenChange() {
+                const inFs = !!document.fullscreenElement;
+                if (inFs !== isFullscreen) {
+                    isFullscreen = inFs;
+                    setTimeout(() => {
+                        d3.select(`#${wrapperId} svg`).remove();
+                        if (panelId === 'chart') {
+                            initChart();
+                            if (windowChartAllData.length > 0) createHexbinPlot(windowChartAllData);
+                        } else if (panelId === 'chart2-svg-wrapper' || panelId === 'chart2-panel') {
+                            initChart2();
+                            if (allPercentileData.length > 0) createBarChartWithErrors(allPercentileData, currentPage);
+                        } else if (panelId === 'chart4-svg-wrapper' || panelId === 'chart4-panel') {
+                            initChart4();
+                            if (allScatterData.length > 0) {
+                                const cf = document.getElementById('countryFilter').value;
+                                createScatterPlot(allScatterData, cf);
+                            }
+                        }
+                    }, 300);
+                }
+            }
+
+            btn.addEventListener('click', toggle);
+            document.addEventListener('fullscreenchange', onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+        }
+
+        // Use the chart-panel containers for fullscreen
+        setupFullscreen('chart-panel', 'chart1-fullscreen-btn', 'chart-svg-wrapper');
+        setupFullscreen('chart2-panel', 'chart2-fullscreen-btn', 'chart2-svg-wrapper');
+        setupFullscreen('chart4-panel', 'chart4-fullscreen-btn', 'chart4-svg-wrapper');
+
+        // ========== Chart 4: Downside Risk Scatter (P50 vs P10) ==========
+        const margin4 = {top: 25, right: 20, bottom: 50, left: 50};
+        let width4, height4;
+        let svg4;
+        let allScatterData = [];
+
+        function initChart4() {
+            const container = document.getElementById('chart4-svg-wrapper');
+            const containerWidth = container.clientWidth || 600;
+            const containerHeight = container.clientHeight || 350;
+            width4 = containerWidth - margin4.left - margin4.right;
+            height4 = containerHeight - margin4.top - margin4.bottom;
+
+            d3.select("#chart4-svg-wrapper svg").remove();
+
+            svg4 = d3.select("#chart4-svg-wrapper")
+                .append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${margin4.left},${margin4.top})`);
+        }
+
+        function createScatterPlot(data, filterCountry) {
+            svg4.selectAll("*").remove();
+
+            // Filter data
+            const filteredData = filterCountry && filterCountry !== 'all'
+                ? data.filter(d => d.country === filterCountry)
+                : data;
+
+            if (filteredData.length === 0) {
+                svg4.append("text")
+                    .attr("x", width4 / 2)
+                    .attr("y", height4 / 2)
+                    .attr("text-anchor", "middle")
+                    .style("fill", "#999")
+                    .style("font-size", "14px")
+                    .text("No data");
+                return;
+            }
+
+            // Scales
+            const maxVal = d3.max(filteredData, d => Math.max(d.p50_cf, d.p10_cf)) * 1.1;
+            const x = d3.scaleLinear()
+                .domain([0, maxVal])
+                .range([0, width4]);
+
+            const y = d3.scaleLinear()
+                .domain([0, maxVal])
+                .range([height4, 0]);
+
+            // Axes
+            svg4.append("g")
+                .attr("transform", `translate(0,${height4})`)
+                .call(d3.axisBottom(x).ticks(8).tickFormat(d => d.toFixed(2)))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .style("font-size", "10px")
+                .style("fill", "#555");
+
+            svg4.append("g")
+                .call(d3.axisLeft(y).ticks(8).tickFormat(d => d.toFixed(2)))
+                .call(g => g.select(".domain").remove())
+                .selectAll("text")
+                .style("font-size", "10px");
+
+            // Axis labels
+            svg4.append("text")
+                .attr("x", width4 / 2)
+                .attr("y", height4 + 35)
+                .attr("text-anchor", "middle")
+                .style("font-size", "11px")
+                .style("font-weight", "600")
+                .style("fill", "#555")
+                .text("P50 (Expected Yield)");
+
+            svg4.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -margin4.left + 15)
+                .attr("x", -height4 / 2)
+                .attr("text-anchor", "middle")
+                .style("font-size", "11px")
+                .style("font-weight", "600")
+                .style("fill", "#555")
+                .text("P10 (Bad Year Yield)");
+
+            // Grid lines
+            svg4.append("g")
+                .call(d3.axisLeft(y).ticks(8).tickSize(-width4).tickFormat(""))
+                .call(g => g.selectAll("line").attr("stroke", "#eee"))
+                .call(g => g.selectAll(".domain").remove());
+
+            // Diagonal line y = x
+            svg4.append("line")
+                .attr("x1", x(0))
+                .attr("y1", y(0))
+                .attr("x2", x(maxVal))
+                .attr("y2", y(maxVal))
+                .attr("stroke", "#999")
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", "6,4");
+
+            // Diagonal label
+            svg4.append("text")
+                .attr("x", x(maxVal * 0.85))
+                .attr("y", y(maxVal * 0.85) - 8)
+                .style("font-size", "9px")
+                .style("fill", "#999")
+                .style("font-style", "italic")
+                .text("y = x");
+
+            // Dots
+            svg4.selectAll(".scatter-dot")
+                .data(filteredData)
+                .enter().append("circle")
+                .attr("class", "scatter-dot")
+                .attr("cx", d => x(d.p50_cf))
+                .attr("cy", d => y(d.p10_cf))
+                .attr("r", 4)
+                .attr("fill", "#1565c0")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1)
+                .attr("opacity", 0.75)
+                .style("cursor", "pointer")
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("opacity", 1).attr("r", 6);
+                    
+                    const downsideRisk = (d.p50_cf - d.p10_cf).toFixed(4);
+                    
+                    tooltip.html(`
+                        <h6 style="margin: 0 0 8px 0; color: #2c3e50;">${d.region_name}</h6>
+                        <div style="font-size: 11px; color: #666; margin-bottom: 6px;">${d.country}</div>
+                        <div><strong>P50:</strong> ${d.p50_cf.toFixed(4)}</div>
+                        <div><strong>P10:</strong> ${d.p10_cf.toFixed(4)}</div>
+                        <hr style="margin: 6px 0; border-color: #eee;">
+                        <div><strong>Downside Risk:</strong> <span style="color: #d32f2f; font-weight: bold;">${downsideRisk}</span></div>
+                        <div style="margin-top: 4px; font-size: 10px; color: #999;">
+                            <em>P50 - P10 difference = downside risk</em>
+                        </div>
+                    `)
+                    .style("left", positionTooltip(event).left)
+                    .style("top", positionTooltip(event).top)
+                    .transition().duration(200).style("opacity", 0.98);
+                })
+                .on("mouseout", function() {
+                    d3.select(this).attr("opacity", 0.75).attr("r", 4);
+                    tooltip.transition().duration(300).style("opacity", 0);
+                });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                fetchData();
+                fetchRegionPercentiles();
+                fetchCountryTrendData();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

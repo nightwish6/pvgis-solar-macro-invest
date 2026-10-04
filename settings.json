@@ -1,0 +1,12 @@
+{
+  "clickhouse": {
+    "host": "localhost",
+    "port": 8123,
+    "user": "default",
+    "password": "",
+    "database": "default"
+  },
+  "server": {
+    "port": 3000
+  }
+}

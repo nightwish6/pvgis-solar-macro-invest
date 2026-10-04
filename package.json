@@ -1,0 +1,19 @@
+{
+  "name": "macro-solar-investment-dashboard",
+  "version": "1.0.0",
+  "description": "Macro Solar Investment Dashboard with Hexbin Plot visualization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@apla/clickhouse": "^1.6.4",
+    "clickhouse": "^2.5.0",
+    "cors": "^2.8.6",
+    "express": "^4.22.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
