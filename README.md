@@ -1,3 +1,5 @@
+![Solar Analytics Dashboard](https://github.com/nightwish6/pvgis-solar-macro-invest/blob/main/European_Solar_Asset_Analytics.pdf)
+
 ### Summary
 European Solar Asset Analytics (1986–2015)
 Data-driven dashboard for evaluating the long-term performance and risk profile of solar assets across Europe. Visualizes climate trends, seasonal yield gaps, interannual volatility, and downside risks using metrics such as Capacity Factor, Winter Gap, and Coefficient of Variation. Enables informed investment decisions by quantifying both expected yields and extreme scenarios.
